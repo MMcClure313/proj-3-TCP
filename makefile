@@ -5,20 +5,20 @@ CXX = g++
 CXXFLAGS = -Wall -Wextra -g -std=c++11 -pthread
 
 # Target executables
-TARGETS = httpServer httpClient
+TARGETS = tcpServer tcpClient
 
 .PHONY: clean
 
-all: httpClient httpServer
+all: tcpServer tcpClient
 
-httpClient:
-	$(CXX) $(CXXFLAGS) httpClient.cpp -o httpClient
+tcpClient:
+	$(CXX) $(CXXFLAGS) tcpClient.cpp -o tcpClient
 
-httpServer:
-	$(CXX) $(CXXFLAGS) httpServer.cpp -o httpServer
+tcpServer:
+	$(CXX) $(CXXFLAGS) tcpServer.cpp -o tcpServer
 
-httpServer.o: tcpServer.cpp
+tcpClient.o: tcpServer.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 clean:
-	rm -f *.o httpServer httpClient
+	rm -f *.o tcpServer tcpClient
