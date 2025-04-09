@@ -113,3 +113,40 @@ vector<User>& UserHandler::getActiveUsers() {
     return activeUsers;
 }
 
+std::string UserHandler::getUsernameBySocket(int socketNo){
+    for(const auto& user : activeUsers){
+        if(user.getSocketNo() == socketNo){
+            return user.getUsername();
+        }
+    }
+    return " ";
+}
+
+bool UserHandler::subscribeUser(const std::string& username, const std::string& location) {
+    for (auto& user : activeUsers) {
+        if (user.getUsername() == username) {
+            user.addLocation(location);
+            return true;
+        }
+    }
+    return false;
+}
+
+bool UserHandler::unsubscribeUser(const std::string& username, int index) {
+    for (auto& user : activeUsers) {
+        if (user.getUsername() == username) {
+            user.removeLocation(index);
+            return true;
+        }
+    }
+    return false;
+}
+
+std::vector<std::string> UserHandler::getUserLocations(const std::string& username) {
+    for (auto& user : activeUsers) {
+        if (user.getUsername() == username) {
+            return user.getAllLocations();
+        }
+    }
+    return {};
+}

@@ -109,14 +109,6 @@ private:
 
 
 int main(int argc, char *argv[]){
-    //Specify program usage and debug statements.
-    if(argc <= 2){
-        cout << "please run the application like so: './httpClient <serverIdentifier:portNumber> <fileToRequest/messageToSend>" << endl;
-        return -1;
-    } else{
-        cout << argv[0] << "\t" << argv[1] << "\t" << argv[2] << endl;
-    }
-
     string host = "127.0.0.1";
     int port = 12345;
 
@@ -124,10 +116,25 @@ int main(int argc, char *argv[]){
     client.connect_to_server();
     client.start_receiving();
 
-    std::string message;
-    while(true) {
-        std::getline(std::cin, message);
-        client.send_data(message);
+    cout << "=== Welcome to the Weather Alert System ===\n";
+    cout << "Commands:\n";
+    cout << "  REGISTER <username> <password>\n";
+    cout << "  LOGIN <username> <password>\n";
+    cout << "  LOGOUT \n";
+    cout << "  SUBSCRIBE <location> \n";
+    cout << "  CHANGE_PASSWORD <new password> \n";
+    cout << "  QUIT (to exit)\n\n";
+
+    std::string input;
+    while (true) {
+        std::cout << "> ";
+        std::getline(std::cin, input);
+        if (input == "QUIT") {
+            client.send_data("QUIT");  // Notify server
+            break;                     // Exit input loop
+        }
+
+        client.send_data(input);
     }
 
     return 0;

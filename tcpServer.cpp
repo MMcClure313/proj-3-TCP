@@ -23,6 +23,7 @@
 #include <fstream>      // file reading
 #include <sys/types.h>  // socket data types
 #include <sys/socket.h> // socket functions
+#include "UserHandler.hpp" // User Handling Header
 
 
 
@@ -31,7 +32,7 @@ using namespace std;
 
 class TCPServer {
 public:
-    TCPServer(int port) : server_port(port){
+    TCPServer(int port) : server_port(port), userHandler("users.txt"){
 
         server_socket = socket(AF_INET, SOCK_STREAM, 0);
         if (server_socket == -1) {
@@ -79,6 +80,8 @@ private:
     int server_socket;
     struct sockaddr_in server_address;
     int server_port;
+    string response;
+    UserHandler userHandler;
 
     void handle_client(int client_socket){
         char buffer[512];
@@ -93,7 +96,100 @@ private:
 
 
                 //Auto response for testing
-                string response = "Server: " + message;
+                //string response = "Server: " + message;
+
+                istringstream iss(message);
+                string command;
+                iss >> command;
+
+                if (command == "REGISTER") {
+                   string username, password;
+                   iss >> username >> password;
+                   bool success = userHandler.registerUser(username, password);
+                   response = success ? "Registration successful." : "Username already exists.";
+                }
+                else if (command == "LOGIN") {
+                    string username, password;
+                    iss >> username >> password;
+                    bool success = userHandler.loginUser(username, password, client_socket);
+                    response = success ? "Login successful." : "Invalid username or password.";
+                }
+                else if (command == "LOGOUT") {
+                    std::string username = userHandler.getUsernameBySocket(client_socket);
+                    if (!username.empty()) {
+                        bool success = userHandler.logoutUser(username);
+                        response = success ? "Logout successful." : "Logout failed.";
+                    } else {
+                    response = "You are not logged in.";
+                    }
+                }
+                else if (command == "SUBSCRIBE") {
+                    std::string location;
+                    iss >> location;
+
+                    std::string username = userHandler.getUsernameBySocket(client_socket);
+                    if (!username.empty()) {
+                        bool success = userHandler.subscribeUser(username, location);
+                        response = success ? "Subscribed to " + location + "." : "Subscription failed.";
+                    } else {
+                        response = "You must be logged in to subscribe.";
+                    }
+                }
+                else if (command == "QUIT") {
+                    std::string username = userHandler.getUsernameBySocket(client_socket);
+                    if (!username.empty()) {
+                        userHandler.logoutUser(username);  // Optional, already handled on disconnect
+                    }
+                    cout << "User requested quit. Closing connection for socket: " << client_socket << endl;
+                    break;
+                }
+                else if (command == "UNSUBSCRIBE") {
+                    int index;
+                    iss >> index;
+
+                    std::string username = userHandler.getUsernameBySocket(client_socket);
+                    if (!username.empty()) {
+                        bool success = userHandler.unsubscribeUser(username, index);
+                        response = success ? "Unsubscribed from location index " + std::to_string(index) + "." : "Unsubscribe failed.";
+                    } else {
+                        response = "You must be logged in to unsubscribe.";
+                    }
+                }
+                else if (command == "CHANGE_PASSWORD") {
+                    std::string newPassword;
+                    iss >> newPassword;
+
+                    std::string username = userHandler.getUsernameBySocket(client_socket);
+                    if (!username.empty()) {
+                        bool success = userHandler.changePassword(username, newPassword);
+                        response = success ? "Password changed successfully." : "Password change failed.";
+                    } else {
+                        response = "You must be logged in to change your password.";
+                    }
+                }
+                else if (command == "SEE_SUBSCRIPTIONS") {
+                    std::string username = userHandler.getUsernameBySocket(client_socket);
+                    if (!username.empty()) {
+                        auto locations = userHandler.getUserLocations(username);
+                        if (locations.empty()) {
+                            response = "You are not subscribed to any locations.";
+                        } else {
+                            std::ostringstream oss;
+                            oss << "Your Subscriptions:\n";
+                            for (size_t i = 0; i < locations.size(); ++i) {
+                                oss << i << ". " << locations[i] << "\n";
+                            }
+                            response = oss.str();
+                        }
+                    } else {
+                        response = "You must be logged in to see subscriptions.";
+                    }
+                }
+                else {
+                    response = "Unknown command. Use LOGIN or REGISTER.";
+                }
+
+
                 send(client_socket, response.c_str(), response.length(), 0);
 
             } else if (received == 0) {

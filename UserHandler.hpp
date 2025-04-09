@@ -22,6 +22,14 @@ class UserHandler{
 
         vector<User>& getActiveUsers();
         
+        std::string getUsernameBySocket(int socketNo); // For implimenting Login/reg/logout
+
+        bool subscribeUser(const std::string& username, const std::string& location); //for subscribing
+
+        bool unsubscribeUser(const std::string& username, int index); // you know what this is for
+
+        std::vector<std::string> getUserLocations(const std::string& username); //get user registration index numbers
+
 
     private: 
 
