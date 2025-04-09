@@ -17,8 +17,9 @@ tcpClient:
 tcpServer:
 	$(CXX) $(CXXFLAGS) tcpServer.cpp -o tcpServer
 
-tcpClient.o: tcpServer.cpp
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+testMain:
+	$(CXX) $(CXXFLAGS) testMain.cpp UserHandler.cpp User.cpp -o testMain
 
 clean:
-	rm -f *.o tcpServer tcpClient
+	rm -f *.o tcpServer tcpClient testMain
+
