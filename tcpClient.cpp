@@ -1,7 +1,7 @@
 /**
  * COP4635, SYSNET2
  * @authors Matthew McClure, Hunter Seth Mercer
- * @date 02/08/2025
+ * @date 04/08/2025
  * 
  * An application used to connect to the httpServer from project 1, and request files and send messages as needed.
  * Coded on a Windows 10 machine using Visual Studio code and ran through an Ubantu WSL terminal integreated in VSCode. 
@@ -13,30 +13,100 @@
 #include <iostream>
 #include <stdio.h> //Standard library
 #include <stdlib.h> //Standard library
+#include <thread>
 
-#include <string.h> // For strlen, strcpy, strtok
+
+#include <string.h> 
 
 #include <sys/socket.h> //API and definitions for the sockets
 #include <sys/types.h> //more definitions
 #include <netinet/in.h> //Structures to store address information
 #include <arpa/inet.h> // For inet_pton
-#include <sys/types.h>  // socket data types
-#include <sys/socket.h> // socket functions
 #include <unistd.h>
 
 using namespace std;
 
-int findSymbol(const char arr[], char target){
+class TCPClient{
+    public:
+    /**
+     * All constructor does is take the host, and set up all it needs in order
+     * to connect to a server as specified by the parameters.
+     */
+        TCPClient(const string& host, int port) : server_ip(host), server_port(port) {
+            client_socket = socket(AF_INET, SOCK_STREAM, 0);
+            if(client_socket == -1){
+                cerr << "Socket creation failed\n";
+                exit(0);
+            }
 
-    if (arr == nullptr) return -1; 
-
-    for(int i = 0; arr[i] != '\0'; i++){
-        if(arr[i] == target){
-            return i;
+            server_address.sin_family = AF_INET;
+            server_address.sin_port = htons(server_port);
+            server_address.sin_addr.s_addr = inet_addr(server_ip.c_str());
         }
+
+        /**
+         * When you make a TCPClient object, the host and port are already specified.
+         * We generated a seperate function to handle the connection, and go ahead and 
+         * set up all the connection params to quickly connect on this function call.
+         */
+        void connect_to_server() {
+            if(connect(client_socket, (struct sockaddr*)&server_address, sizeof(server_address)) == -1){
+                cerr << "Connection failed\n";
+                exit(0);
+            }
+            cout << "Connected to server: " << server_ip <<":" << server_port << endl;
+        }
+
+        void send_data(const string& data){
+            if(send(client_socket, data.c_str(), data.length(), 0) ==-1){
+                cerr << "Send failed\n";
+            } else {
+                cout << "Sent: " << data << endl; //DEBUG
+            }
+        }
+
+
+        void receive_data() {
+            char buffer[512]; //Keeping it small considering the amount of data is limited to just text.
+            while(true) {
+                memset(buffer, 0, sizeof(buffer));
+                int recieved = recv(client_socket, buffer, sizeof(buffer) -1, 0);
+
+                if (recieved > 0) {
+                    cout << "Received: " << string(buffer, recieved) << "\n";
+                } else if (recieved == 0) {
+                    cout << "Connection closed by server\n";
+                    break;
+                } else {
+                    cerr << "Recv failed\n";
+                    break;
+                }
+            }
+        }
+
+        void start_receiving() {
+            receive_thread = thread(&TCPClient::receive_data, this);
+        }
+        
+    ~TCPClient() { //Cleanup, ensure that all threads are done.
+        if(receive_thread.joinable()){
+            receive_thread.join();
+        }
+        close(client_socket);
     }
-    return -1;
-}
+
+    /**
+     * These are where the client variables live.
+     */
+private:
+    int client_socket;
+    struct sockaddr_in server_address;
+    std::string server_ip;
+    int server_port;
+    thread receive_thread;
+};
+
+
 
 int main(int argc, char *argv[]){
     //Specify program usage and debug statements.
@@ -44,94 +114,21 @@ int main(int argc, char *argv[]){
         cout << "please run the application like so: './httpClient <serverIdentifier:portNumber> <fileToRequest/messageToSend>" << endl;
         return -1;
     } else{
-        //cout << argv[0] << "\t" << argv[1] << "\t" << argv[2] << endl;
+        cout << argv[0] << "\t" << argv[1] << "\t" << argv[2] << endl;
     }
 
-    //If the argument is ./httpClient 0.0.0.0:60060 GET index.html then the argc is 4 and we need to combine the two in order to get the right message.
-    char fullMessage[256] = {0}; //setting the message size to be 256
-    for(int i = 2; i < argc; i++){
-        if (strlen(fullMessage) + strlen(argv[i]) + 1 >= sizeof(fullMessage)) {
-            cerr << "Error: Message too long!" << endl;
-            return -1;
-        }
-        
-        if (i > 2) strncat(fullMessage, " ", sizeof(fullMessage) - strlen(fullMessage)); // Add space
-        strncat(fullMessage, argv[i], sizeof(fullMessage) - strlen(fullMessage) - 1);
+    string host = "127.0.0.1";
+    int port = 12345;
+
+    TCPClient client(host, port);
+    client.connect_to_server();
+    client.start_receiving();
+
+    std::string message;
+    while(true) {
+        std::getline(std::cin, message);
+        client.send_data(message);
     }
-
-        //Separate address from the port
-        int separator = findSymbol(argv[1], ':');
-        if(separator == -1){
-            cout << "Please indicate the server as <serverAddress>:<port#>" << endl;
-            return -1;
-        }
-
-            // Extract IP and Port
-            char serverIP[separator + 1];
-            strncpy(serverIP, argv[1], separator);
-            serverIP[separator] = '\0';
-            int port = atoi(argv[1] + separator + 1);
-
-            cout << "Client ready. \n\n";
-            cout << "Connecting to " << serverIP << " on port " << port << "\n";
-
-
-
-
-
-
-
-
-        while(true){
-            //Because the client opens with a message, we HAVE to check for the first message.
-            if(fullMessage[0] == '\0'){
-                cout << "enter request (or 'exit' to quit)\nReminder, running a GET requires GET /<filename>:  ";
-                cin.getline(fullMessage, sizeof(fullMessage));
-            }
-
-            if(strcmp(fullMessage, "exit") == 0){
-                cout << "exiting application\n\n";
-                break;
-            }
-
-            int tcp_client_socket; //Socket descriptor
-            tcp_client_socket = socket(AF_INET, SOCK_STREAM, 0); //Calling the socket function - args: socket domain, socket stream type, TCP protocol (default)
-            struct sockaddr_in tcp_server_address;
-            tcp_server_address.sin_family = AF_INET; //Structure Fields' definition: Sets the address family of the address the client would connect to
-
-            tcp_server_address.sin_port = htons(60060); //Specify and pass the port number to connect - converting in right network byte order
-
-            if(inet_pton(AF_INET, serverIP, &tcp_server_address.sin_addr) <= 0){ //connects to the ip address specified. <= 0 means unsupported.
-                cerr << ("Invalid or unsupported address") << endl;
-                return -1;
-            }
-
-            int connection_status = connect(tcp_client_socket, (struct sockaddr *) &tcp_server_address, sizeof(tcp_server_address)); //params: which socket, castfor address to the specific structure type, size of address
-        
-            if (connection_status == -1){
-            //return value of 0 means all okay, -1 means a problem
-            printf(" Problem connecting to the socket! Sorry!! \n");
-            }
-
-
-        cout << "Sending message: " << fullMessage << " to the server";
-
-        //Send the loaded message.
-        send(tcp_client_socket, fullMessage, sizeof(fullMessage), 0);
-        
-        //As we know what the message sent from the server buffer is, we just set it to the same value there.
-        char tcp_server_response[1024];
-        recv(tcp_client_socket, &tcp_server_response, sizeof(tcp_server_response), 0);
-        // params: where (socket), what (string), how much - size of the server response, flags (0)
-        //Output, as received from Server
-        cout << "\n\n Server says: \n" << tcp_server_response << "\n\n";
-        //closing the socket
-        close(tcp_client_socket);
-
-        memset(tcp_server_response, 0, sizeof(fullMessage));  //Clear both messages
-        memset(fullMessage, 0, sizeof(fullMessage));
-        }
-
 
     return 0;
 }
