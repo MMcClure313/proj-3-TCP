@@ -14,8 +14,8 @@ class User{
     vector<string> getAllLocations() const;
     
     //Add and remove locations
-    void addLocation(const string& location);
-    void removeLocation(const int& index);
+    bool addLocation(const string& location);
+    bool removeLocation(const int& index);
 
     //add message (Will check if messages > 10, then remove)
     void addMessage(const string& message);

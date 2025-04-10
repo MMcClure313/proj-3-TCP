@@ -41,6 +41,10 @@ void UserHandler::loadUsersFromFile(const string& filename){
   * CRITICAL SECTION, REQUIRES LOCKS.
   */
 bool UserHandler::registerUser(const string& username, const string& password){
+    if(username.empty() || password.empty()){
+        return false;
+    }
+
     if(storedUsers.find(username) != storedUsers.end()) {
         return false; // case if the  username exists in the map.
     }
@@ -119,14 +123,13 @@ std::string UserHandler::getUsernameBySocket(int socketNo){
             return user.getUsername();
         }
     }
-    return " ";
+    return "";
 }
 
 bool UserHandler::subscribeUser(const std::string& username, const std::string& location) {
     for (auto& user : activeUsers) {
         if (user.getUsername() == username) {
-            user.addLocation(location);
-            return true;
+            return user.addLocation(location);
         }
     }
     return false;

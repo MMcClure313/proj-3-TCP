@@ -14,15 +14,19 @@ vector<string> User::getAllLocations() const{
     return Locations;
 }
 
-void User::addLocation(const string& location){
+bool User::addLocation(const string& location){
+    if(location.empty()) return false;
     Locations.push_back(location);
+    return true;
 }
 
 //When the users want to remove a location, they will type in the index of the location they want to remove.
-void User::removeLocation(const int& index){
-    if(index >= 0 && index < Locations.size()) {
+bool User::removeLocation(const int& index){
+    if(index >= 0 && index < static_cast<int>(Locations.size())) {
         Locations.erase(Locations.begin() + index);
+        return true;
     }
+    return false;
 }
 
 void User::addMessage(const string& message){
